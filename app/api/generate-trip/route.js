@@ -35,160 +35,105 @@ export async function POST(request) {
       }
     }
     
-    // Build the prompt for Gemini
-    const prompt = `You are a travel planning expert specializing in budget-friendly trips for students. You have extensive knowledge of transportation costs, hostel prices, and travel tips.
+    // Build the prompt for OpenAI
+    const prompt = `You are a travel expert. Create a realistic budget trip plan from ${currentLocationName} to ${destination}.
 
-CRITICAL: You MUST research the ACTUAL transportation providers that service the route from ${currentLocationName} to ${destination}. DO NOT use placeholder names. Research which bus companies, train services, and airlines actually operate on this specific route.
+TRIP: ${startDate} to ${endDate} (${days} days, ${monthName}), ${travelers} travelers, Budget: ${budget ? `$${budget}` : '$300-500'}, Style: ${travelStyle}
 
-Create a detailed travel plan with the following information:
+⚠️ CRITICAL DISTANCE ANALYSIS - READ CAREFULLY:
+You MUST estimate the actual distance between ${currentLocationName} and ${destination}:
 
-TRIP DETAILS:
-- Origin: ${currentLocationName}
-- Destination: ${destination}
-- Dates: ${startDate} to ${endDate} (${days} days in ${monthName})
-- Budget: ${budget ? `${budget}` : 'Budget-conscious (assume $300-500 range)'}
-- Number of travelers: ${travelers}
-- Travel style: ${travelStyle}
+**DISTANCE CATEGORIES & WHAT TO SHOW:**
+- **Under 50 miles** (e.g., College Park to DC): Metro/subway ONLY ($2-8, 30-60 min)
+- **50-500 miles** (e.g., College Park to NYC, NYC to Boston, NYC to DC): Show ALL options - Bus, Train, AND Flight if available
+  * Bus: Always practical for this range ($30-100, 3-10h)
+  * Train: Usually available on major routes ($50-150, 3-8h)
+  * Flight: Include if airports exist, even if more expensive ($100-250, 1-2h)
+- **500-1500 miles** (e.g., NYC to Chicago, LA to Seattle): Show ALL options but prioritize Flight
+  * Flight: Most practical ($150-350, 2-4h)
+  * Bus: Mention but note long duration ($80-200, 15-30h)
+  * Train: Mention if scenic routes exist ($150-400, 20-35h)
+- **OVER 1500 miles** (e.g., East Coast to West Coast): Flight FIRST, but still mention bus/train
+  * Flight: PRIMARY option ($250-500, 5-7h)
+  * Bus: List but mark "Not Recommended - 40-60 hours" ($200-350)
+  * Train: List but mark "Scenic but impractical - 60-70 hours" ($400-800)
 
-ROUTE-SPECIFIC RESEARCH REQUIRED:
-Before generating the plan, think about what transportation actually exists for this route:
-1. What bus companies operate between ${currentLocationName} and ${destination}? (Greyhound, FlixBus, Megabus, Peter Pan, BoltBus, regional carriers?)
-2. What train services exist? (Amtrak, regional rail, commuter rail, or NO train service?)
-3. What are the nearest airports and which airlines fly this route? (major carriers, budget airlines, or no viable flight?)
-4. If a transportation mode doesn't exist or make sense for this route, DO NOT include it or mark it as "Not Available"
+🚨 EXAMPLES:
+- College Park to NYC (~225 miles): Show Bus ($30-50, 4-5h), Train ($60-120, 3-4h), Flight ($150-250, 1.5h)
+- College Park to San Francisco (~2,800 miles): Show Flight FIRST ($350-500, 6-7h), then Bus ($250, 50h - not recommended), Train ($600, 70h - scenic but long)
 
-Generate a comprehensive trip plan in JSON format with this EXACT structure:
+**CRITICAL: For distances 50-500 miles, ALWAYS show at least 2-3 transportation options. People want choices!**
+
+JSON STRUCTURE:
 {
   "destination": "${destination}",
   "origin": "${currentLocationName}",
   "duration": "${days} days",
-  "totalCost": "estimated cost range with $ symbol",
-  "dailyBudget": "per day estimate with $ symbol",
-
+  "totalCost": "$XXX-YYY",
+  "dailyBudget": "$XX-YY",
   "transport": [
-    {
-      "type": "Bus",
-      "name": "Megabus",
-      "cost": "$65 round trip",
-      "duration": "6 hours",
-      "analysis": "Chose Megabus because it is the cheapest option (~$65) with direct routes, moderate comfort, and reliable schedule.",
-      "bookingUrl": "https://us.megabus.com",
-      "bookingInstructions": "Search from ${currentLocationName} to ${destination} for ${formattedStartDate}"
-    },
-    {
-      "type": "Train",
-      "name": "Amtrak",
-      "cost": "$120 round trip",
-      "duration": "5.5 hours",
-      "analysis": "Amtrak is faster than bus, more comfortable, but more expensive (~$120). Only considered direct routes from current location.",
-      "bookingUrl": "https://www.amtrak.com",
-      "bookingInstructions": "Search from ${currentLocationName} to ${destination} for ${formattedStartDate}"
-    },
-    {
-      "type": "Flight",
-      "name": "Spirit Airlines",
-      "cost": "$200 round trip",
-      "duration": "1.5 hours",
-      "analysis": "Flight is fastest option but most expensive. Budget airlines considered (Spirit, Frontier), but departure airport limited the choices.",
-      "bookingUrl": "https://www.google.com/travel/flights",
-      "bookingInstructions": "Search flights from ${currentLocationName} to ${destination} for ${formattedStartDate}"
-    }
+    {"type": "Flight/Bus/Train/Metro", "name": "Provider", "cost": "$XX", "duration": "REALISTIC hours", "analysis": "Explanation", "bookingUrl": "url", "bookingInstructions": "details"}
   ],
-
-  "accommodation": {
-    "name": "Specific hostel/budget hotel name - NOT generic 'Hi + destination'",
-    "cost": "$XX/night",
-    "total": "$XXX for ${days - 1} nights",
-    "bookingUrl": "https://www.hostelworld.com or https://www.booking.com",
-    "bookingInstructions": "Search for hostels in ${destination} for ${formattedStartDate} to ${formattedEndDate}"
-  },
-  
+  "accommodation": {"name": "Real hostel", "cost": "$XX/night", "total": "$XXX for ${days - 1} nights", "bookingUrl": "url", "bookingInstructions": "details"},
   "itinerary": [
-    {
-      "day": 1,
-      "activities": "Detailed morning, afternoon, evening activities specific to ${destination}. Include specific attraction names, neighborhoods, and free/cheap options."
-    }
+    {"day": 1, "activities": "Detailed morning, afternoon, and evening activities. Include specific attraction names, neighborhoods, restaurants, and free/cheap options in ${destination}. Make it engaging and specific."},
+    {"day": 2, "activities": "Different activities for day 2 with specific places..."}
   ],
-  
-  "packingList": [
-    "10-15 specific items based on ${monthName} weather in ${destination}",
-    "Include weather-specific clothing",
-    "Travel essentials",
-    "Tech items"
-  ],
-  
-  "safetyTips": [
-    "5-7 specific safety tips for ${destination}",
-    "Include neighborhood safety info",
-    "Emergency numbers",
-    "Local customs to be aware of",
-    "Scam warnings if applicable"
-  ],
-  
-  "checklist": [
-    "Passport/ID requirements",
-    "Visa information if needed",
-    "Travel insurance",
-    "Booking confirmations",
-    "Currency exchange",
-    "SIM card/data plan",
-    "Download offline maps",
-    "Notify bank of travel"
-  ],
-  
-  "recommendation": "One sentence explaining which transport option gives best value. Example: 'Take the Megabus for $65 and stay in a hostel to keep your total trip under $250!'"
+  "packingList": ["10-15 items for ${monthName}"],
+  "safetyTips": ["5-7 tips for ${destination}"],
+  "checklist": ["8-10 pre-trip items"],
+  "recommendation": "Best value option"
 }
 
-CRITICAL INSTRUCTIONS FOR TRANSPORTATION:
-1. **RESEARCH THE ACTUAL ROUTE**: Think about which providers actually serve ${currentLocationName} to ${destination}
-2. **Bus companies vary by region**: 
-   - East Coast: Greyhound, Peter Pan, Megabus, BoltBus
-   - West Coast: Greyhound, FlixBus, Amtrak Thruway
-   - Midwest: Greyhound, Burlington Trailways, Barons Bus
-   - International: Greyhound (US-Canada), FlixBus (Europe)
-3. **Train services are LOCATION-SPECIFIC**:
-   - Amtrak operates in USA (but NOT all routes - check if route exists!)
-   - VIA Rail in Canada
-   - Regional/commuter rail for short distances
-   - If NO train service exists between cities, say "Not Available" or skip it
-4. **Airlines vary by route distance and airports**:
-   - Short routes (<200 miles): Often no flights, use bus/train instead
-   - Medium routes: Budget airlines (Spirit, Frontier, Southwest, Allegiant)
-   - Check actual airports near both cities
-   - If cities don't have airports nearby, mark as "Not Practical"
-5. **Use REAL booking URLs** based on the provider you choose
-6. **Provide realistic costs** based on typical prices for that route distance and provider
+CRITICAL RULES:
+1. **Estimate distance first** - is ${currentLocationName} to ${destination} 50mi, 200mi, 500mi, 1000mi, or 1500+ mi?
+2. **ALWAYS show multiple options for 50-500 mile trips** (like College Park to NYC):
+   - Include Bus (Greyhound, Megabus, Peter Pan)
+   - Include Train (Amtrak if available)
+   - Include Flight (if airports available)
+3. **For 500-1500 miles**: Show all options but recommend flight
+4. **For 1500+ miles**: Show flight first, but still list bus/train with "not recommended" note
+5. **Travel times MUST be realistic**:
+   - Bus: ~50 mph average including stops
+   - Train: ~50-60 mph for long distance
+   - Flight: 500 mph + 2h airport time
+6. ${budget ? `Stay within ${budget} total` : 'Aim for $300-500'}
+7. Real providers: Greyhound, Megabus, Peter Pan (bus), Amtrak (train), Spirit/Frontier/Southwest (flights)
+8. Real hostels: HI Hostels, Generator, USA Hostels, Pacific Trailways
+9. Metro systems: WMATA (DC), MTA (NYC), BART (SF), MBTA (Boston), CTA (Chicago)
+10. Return ONLY valid JSON, no markdown
 
-EXAMPLES OF GOOD ROUTE RESEARCH:
-- Boston to New York: Greyhound, Peter Pan Bus, Amtrak (Northeast Regional), Delta/JetBlue flights
-- Los Angeles to San Francisco: Greyhound, Amtrak (Coast Starlight), Southwest/Alaska flights
-- College Park to Toronto: Greyhound (via NYC), NO direct Amtrak (would need multiple trains), Budget flights from BWI
-- Seattle to Portland: FlixBus, BoltBus, Amtrak Cascades, Alaska Airlines
+ITINERARY REQUIREMENTS:
+- Create ${days} full day-by-day itineraries
+- Each day should have 4-6 sentences describing morning, afternoon, and evening activities
+- Include SPECIFIC attraction names (museums, parks, neighborhoods, restaurants)
+- Mix paid attractions with FREE options (parks, walking tours, viewpoints)
+- Include local food recommendations and budget-friendly eating spots
+- Mention approximate costs for major activities
+- Make it exciting and detailed - travelers should be able to follow this plan exactly!
 
-OTHER CRITICAL INSTRUCTIONS:
-OTHER CRITICAL INSTRUCTIONS:
-1. For booking URLs:
-   - Buses: Use actual provider website (greyhound.com, megabus.com, flixbus.com, peterpanbus.com, etc.)
-   - Trains: Use amtrak.com (USA), viarail.ca (Canada), or specific regional rail site
-   - Flights: Use https://www.google.com/travel/flights or https://www.kayak.com
-   - Accommodation: Use https://www.hostelworld.com for hostels or https://www.booking.com for hotels
-2. Include clear booking instructions with origin, destination, and dates
-3. All URLs must be real, working websites
-4. Make sure total costs add up correctly (transport + accommodation + daily expenses)
-5. Create ${days} unique daily itineraries with SPECIFIC attractions, museums, neighborhoods in ${destination}
-6. Include weather-appropriate packing for ${monthName} in ${destination}
-7. Keep accommodation budget-friendly (hostels $25-45/night, budget hotels $50-75/night)
-8. If budget is provided, ensure total cost stays within or slightly under it
-9. Return ONLY valid JSON, absolutely no markdown formatting, no code blocks, no explanatory text
-10. All cost values must include $ symbol
+**HOLIDAY & SEASONAL EVENTS:**
+- Check if ${startDate} to ${endDate} falls during any major holidays or events in ${destination}
+- If traveling during holidays (Christmas, New Year's, Thanksgiving, 4th of July, Halloween, etc.), include:
+  * Holiday markets (Christmas markets, holiday bazaars, craft fairs)
+  * Special events (parades, fireworks, festivals, light displays)
+  * Seasonal activities unique to that time
+  * Holiday-themed restaurants or pop-ups
+  * Note: Some attractions may be closed or have special hours during holidays
+- For ${monthName}, mention any seasonal events typical for that month in ${destination}
+- Examples: "It's December, so visit the Union Square Christmas Market with holiday gifts and hot cocoa!" or "Since it's July 4th week, catch the fireworks show at the waterfront!"
 
-EXAMPLE TRANSPORT PRICING BY DISTANCE:
-- Under 200 miles: Bus $20-60, Train $40-90, Flight usually not practical
-- 200-500 miles: Bus $50-100, Train $80-180, Flight $120-250
-- 500-1000 miles: Bus $80-150, Train $120-300, Flight $150-350
-- Over 1000 miles: Bus $100-200, Train $200-500, Flight $200-500
+Example good itinerary entry:
+"Start your morning at the Golden Gate Bridge (free!) for sunrise photos, then head to Fisherman's Wharf for clam chowder in a sourdough bowl ($12-15). Spend the afternoon exploring Alcatraz Island (book tickets in advance, $40) or walk through Chinatown for free and grab dim sum at Good Mong Kok Bakery ($8-10). Evening: Watch the sunset at Twin Peaks (free, panoramic city views), then have dinner in the Mission District at La Taqueria ($10-12) and explore the vibrant street art."
 
-Generate the complete plan now:`;
+TRAVEL TIME CALCULATION:
+- 100 miles: Bus 2h, Train 2h, Flight impractical
+- 500 miles: Bus 10h, Train 10h, Flight 2h
+- 1000 miles: Bus 20h, Train 22h, Flight 3.5h
+- 2000 miles: Bus 40h, Train 45h, Flight 6h
+- 3000 miles: Bus 60h, Train 70h, Flight 7h
+
+Generate the plan:`;
 
     // Call OpenRouter API
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -203,12 +148,16 @@ Generate the complete plan now:`;
         model: 'openai/gpt-4o-mini',
         messages: [
           {
+            role: 'system',
+            content: 'You are a travel expert who MUST calculate realistic distances and travel times. For cross-country trips (>1500 miles), ALWAYS list flights first. Respond ONLY with valid JSON.'
+          },
+          {
             role: 'user',
             content: prompt
           }
         ],
         temperature: 0.7,
-        max_tokens: 4000
+        max_tokens: 3500
       })
     });
 

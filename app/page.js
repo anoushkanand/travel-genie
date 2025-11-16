@@ -23,6 +23,21 @@ export default function TravelGenie() {
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
 
+  // Load shared trip from URL on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tripData = urlParams.get('trip');
+    if (tripData) {
+      try {
+        const decoded = JSON.parse(atob(tripData));
+        // Show a preview of the shared trip
+        alert(`Someone shared their ${decoded.destination} trip with you! (${decoded.duration}, ${decoded.totalCost})`);
+      } catch (err) {
+        console.error('Failed to load shared trip:', err);
+      }
+    }
+  }, []);
+
   const toggleChecklistItem = (index) => {
     setCheckedItems(prev => ({
       ...prev,
@@ -121,13 +136,21 @@ export default function TravelGenie() {
         body: JSON.stringify(formData)
       });
       
-      if (!response.ok) throw new Error('Failed to generate trip');
-      
       const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('API Error:', data);
+        throw new Error(data.details || data.error || 'Failed to generate trip');
+      }
+      
+      if (data.error) {
+        throw new Error(data.details || data.error);
+      }
+      
       setTripPlan(data);
     } catch (err) {
-      setError('Oops! Something went wrong. Please try again! 💫');
-      console.error(err);
+      setError(err.message || 'Oops! Something went wrong. Please try again! 💫');
+      console.error('Full error:', err);
     } finally {
       setLoading(false);
     }
@@ -495,7 +518,11 @@ export default function TravelGenie() {
                   <div key={idx} className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 hover:shadow-md transition-all">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-4">
-                        <div className="text-4xl">{option.type === 'Bus' ? '🚌' : option.type === 'Train' ? '🚆' : '✈️'}</div>
+                        <div className="text-4xl">
+                          {option.type.includes('Metro') || option.type.includes('Transit') || option.type.includes('Subway') ? '🚇' : 
+                           option.type === 'Bus' ? '🚌' : 
+                           option.type === 'Train' ? '🚆' : '✈️'}
+                        </div>
                         <div>
                           <div className="font-bold text-gray-800 text-lg">{option.name}</div>
                           <div className="text-sm text-gray-600 font-medium">⏱️ {option.duration}</div>
@@ -599,10 +626,22 @@ export default function TravelGenie() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {tripPlan.packingList.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100 hover:shadow-sm transition-all">
-                      <div className="w-5 h-5 border-2 border-purple-300 rounded-md"></div>
-                      <span className="text-gray-700 font-medium">{item}</span>
-                    </div>
+                    <button
+                      key={idx}
+                      onClick={() => togglePackingItem(idx)}
+                      className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100 hover:shadow-sm transition-all text-left"
+                    >
+                      <div className={`w-5 h-5 border-2 border-purple-300 rounded-md flex items-center justify-center transition-all ${
+                        checkedItems[`packing-${idx}`] ? 'bg-purple-400 border-purple-400' : ''
+                      }`}>
+                        {checkedItems[`packing-${idx}`] && (
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        )}
+                      </div>
+                      <span className={`text-gray-700 font-medium transition-all ${
+                        checkedItems[`packing-${idx}`] ? 'line-through opacity-60' : ''
+                      }`}>{item}</span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -635,10 +674,22 @@ export default function TravelGenie() {
                 </h3>
                 <div className="space-y-2">
                   {tripPlan.checklist.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100 hover:shadow-sm transition-all">
-                      <div className="w-5 h-5 border-2 border-amber-300 rounded-md"></div>
-                      <span className="text-gray-700 font-medium">{item}</span>
-                    </div>
+                    <button
+                      key={idx}
+                      onClick={() => toggleChecklistItem(idx)}
+                      className="w-full flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100 hover:shadow-sm transition-all text-left"
+                    >
+                      <div className={`w-5 h-5 border-2 border-amber-300 rounded-md flex items-center justify-center transition-all ${
+                        checkedItems[idx] ? 'bg-amber-400 border-amber-400' : ''
+                      }`}>
+                        {checkedItems[idx] && (
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        )}
+                      </div>
+                      <span className={`text-gray-700 font-medium transition-all ${
+                        checkedItems[idx] ? 'line-through opacity-60' : ''
+                      }`}>{item}</span>
+                    </button>
                   ))}
                 </div>
               </div>
