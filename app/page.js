@@ -22,7 +22,6 @@ export default function TravelGenie() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
-  const [isSharedTrip, setIsSharedTrip] = useState(false);
 
   // Load shared trip from URL on mount
   useEffect(() => {
@@ -33,7 +32,6 @@ export default function TravelGenie() {
         const decoded = JSON.parse(atob(tripData));
         // Load the full trip plan
         setTripPlan(decoded);
-        setIsSharedTrip(true);
         // Scroll to results
         setTimeout(() => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -237,8 +235,11 @@ export default function TravelGenie() {
   };
 
   const generateShareLink = () => {
-    // Encode the FULL trip plan
-    const tripData = btoa(JSON.stringify(tripPlan));
+    const tripData = btoa(JSON.stringify({
+      destination: tripPlan.destination,
+      duration: tripPlan.duration,
+      totalCost: tripPlan.totalCost
+    }));
     const link = `${window.location.origin}?trip=${tripData}`;
     setShareLink(link);
     setShowShareModal(true);
